@@ -39,6 +39,10 @@ module Motion; class Capture
     @session && session.running?
   end
 
+  def saved_photos
+    @saved_photos
+  end
+
   def capture(&block)
     still_image_output.captureStillImageAsynchronouslyFromConnection(still_image_connection, completionHandler: -> (buffer, error) {
       if error
@@ -81,6 +85,24 @@ module Motion; class Capture
     assets_library.writeImageDataToSavedPhotosAlbum(jpeg_data, metadata: nil, completionBlock: -> (asset_url, error) {
       error ? error_callback.call(error) : block.call(asset_url)
     })
+  end
+
+  def fetch_saved_photos!
+    collector = []
+    assets_library.enumerateGroupsWithTypes(ALAssetsGroupSavedPhotos,
+      usingBlock: -> (group, stop) { 
+        group.enumerateAssetsusingBlock: -> (asset, index, stop) {
+          if asset and asset.valueForPorperty(ALAssetPropertyType) == ALAssetTypePhoto
+            collector << asset
+          end
+        }
+        @saved_photos = collector
+      },
+
+      failureBlock: -> (error) {
+        error_callback.call(error)
+      }
+    )
   end
 
   def attach(view, options = {})
