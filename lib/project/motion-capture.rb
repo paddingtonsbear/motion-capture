@@ -78,9 +78,17 @@ module Motion; class Capture
   end
 
   def save_data(jpeg_data, &block)
-    assets_library.writeImageDataToSavedPhotosAlbum(jpeg_data, metadata: nil, completionBlock: -> (asset_url, error) {
-      error ? error_callback.call(error) : block.call(asset_url)
-    })
+    Dispatch::Queue.new("com.kaibigan.saveToCameraRoll").async do
+      assets_library.writeImageDataToSavedPhotosAlbum(jpeg_data, metadata: nil, completionBlock: -> (asset_url, error) {
+        if error
+          error_callback.call(error)
+        else
+          Dispatch::Queue.main.sync do
+            block.call(asset_url)
+          end
+        end
+      })
+    end
   end
 
   def attach(view, options = {})
